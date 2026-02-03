@@ -1,0 +1,38 @@
+# R specific
+.Rhistory
+.Rapp.history
+.RData
+.Ruserdata
+.Rproj.user/
+
+# Quarto
+.quarto/
+*_cache/
+*_files/
+
+# Output files (keep docs/ for GitHub Pages)
+output/*.png
+output/*.pdf
+output/*.docx
+
+# Data files (too large for git)
+*.rds
+*.RData
+*.csv
+*.xlsx
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+*.Rproj
+
+# Temporary files
+*~
+*.tmp
+*.bak
+
+# Log files
+*.log
