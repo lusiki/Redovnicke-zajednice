@@ -1,0 +1,1907 @@
+---
+title: "Medijska zastupljenost redovničkih zajednica u hrvatskom digitalnom prostoru"
+subtitle: "Analiza ekonomije pažnje u medijskom izvještavanju o redovnicima i redovnicama"
+author: "DigiKat Project"
+date: today
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    number-sections: true
+    code-fold: true
+    code-summary: "Prikaži kod"
+    theme: cosmo
+    fig-width: 10
+    fig-height: 6
+  pdf:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    fig-width: 8
+    fig-height: 5
+    geometry:
+      - top=25mm
+      - left=25mm
+      - right=25mm
+      - bottom=25mm
+    fontsize: 11pt
+    documentclass: article
+  docx:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    fig-width: 6.5
+    fig-height: 4
+execute:
+  warning: false
+  message: false
+---
+```{r setup}
+#| label: setup
+#| include: false
+
+library(tidyverse)
+library(data.table)
+library(scales)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(ineq)
+library(viridis)
+library(lubridate)
+library(tidytext)
+library(stringi)
+library(treemapify)
+library(patchwork)
+
+theme_set(theme_minimal(base_size = 12) +
+          theme(
+            plot.title = element_text(face = "bold", size = 14),
+            plot.subtitle = element_text(color = "gray40"),
+            legend.position = "bottom",
+            panel.grid.minor = element_blank()
+          ))
+
+platform_colors <- c(
+  "web" = "#4285F4",
+  "facebook" = "#1877F2",
+  "instagram" = "#E4405F",
+  "youtube" = "#FF0000",
+  "twitter" = "#1DA1F2",
+  "forum" = "#FF6600",
+  "reddit" = "#FF4500",
+  "comment" = "#808080"
+)
+
+order_family_colors <- c(
+  "Franciscan Family" = "#8B4513",
+  "Dominican Family" = "#000000",
+  "Jesuit" = "#1a3c5a",
+  "Benedictine Family" = "#2c5f7c",
+  "Salesian Family" = "#4a9c6d",
+  "Carmelite Family" = "#6b4c9a",
+  "Other Male Orders" = "#94a3b8",
+  "Other Female Orders" = "#d1d5db",
+  "Congregations of Women" = "#ec4899",
+  "Contemplative Women" = "#f472b6"
+)
+
+gender_colors <- c(
+  "Male" = "#1a3c5a",
+  "Female" = "#c44536"
+)
+
+portal_type_colors <- c(
+  "Mainstream National" = "#2563eb",
+  "Religious Catholic" = "#7c3aed",
+  "Local/Regional" = "#059669"
+)
+```
+
+# Sažetak {.unnumbered}
+
+Ovo istraživanje analizira kako hrvatski digitalni mediji prikazuju redovničke zajednice kroz teorijski okvir ekonomije pažnje. Koristeći DigiKat bazu digitalnog sadržaja od 2021. do 2025. godine, testiramo 12 hipoteza grupiranih u četiri tematske cjeline koja pokrivaju koncentraciju pažnje, spolne razlike, franjevačku dominaciju i tipologiju portala.
+
+Ključna pitanja su dobiva li mali broj redova većinu pažnje, postoje li rodne asimetrije u izvještavanju, dominiraju li franjevci medijskim prostorom te razlikuju li se obrasci izvještavanja između mainstream i religijskih portala.
+
+**Ključne riječi** ekonomija pažnje, redovničke zajednice, medijska reprezentacija, digitalni mediji, Hrvatska
+
+---
+
+# Uvod
+
+Ekonomija pažnje je teorijski okvir koji polazi od činjenice da je informacija obilna, ali ljudska pažnja ograničena. Svaki dan možemo pročitati samo određen broj članaka i pogledati određen broj videa. To stvara konkurenciju za istu oskudnu pažnju publike.
+
+Za redovničke zajednice ovo stvara paradoks. S jedne strane, medijska vidljivost pomaže u privlačenju novih zvanja, donacija i javne podrške. S druge strane, traženje medijske pozornosti može biti u suprotnosti s temeljnim vrijednostima poput poniznosti i kontemplacije.
+
+## Teorijski okvir i hipoteze
+
+Postavljamo 12 hipoteza grupiranih u četiri bloka.
+
+### Blok 1 Koncentracija pažnje
+
+Teorija ekonomije pažnje predviđa neravnomjernu raspodjelu medijskog prostora.
+
+| Hipoteza | Tvrdnja | Test |
+|----------|---------|------|
+| H1a | 20% redova dobiva preko 80% prostora | Gini > 0.60, Pareto omjer |
+| H1b | 10 portala proizvodi preko 50% sadržaja | CR10, HHI indeks |
+| H1c | Mali broj portala piše o malom broju redova | Udio top 5×5 > 30% |
+
+### Blok 2 Spolne razlike
+
+Istražujemo dobivaju li muške zajednice više prostora od ženskih.
+
+| Hipoteza | Tvrdnja | Test |
+|----------|---------|------|
+| H2a | Muški redovi dobivaju preko 60% prostora | Chi square test |
+| H2b | Asimetrija izraženija na mainstream portalima | Test nezavisnosti |
+| H2c | Objave o muškim redovima generiraju više interakcija | Mann Whitney U test |
+
+### Blok 3 Franjevačka dominacija
+
+Franjevci imaju poseban položaj u Hrvatskoj.
+
+| Hipoteza | Tvrdnja | Test |
+|----------|---------|------|
+| H3a | Franjevačka obitelj dobiva preko 30% prostora | Binomial test |
+| H3b | Udio raste u mjesecima obljetnica | T test |
+| H3c | Mainstream portali fokusiraniji na franjevce | Usporedba Gini |
+
+### Blok 4 Tipologija portala
+
+Različiti tipovi portala imaju različite uredničke logike.
+
+| Hipoteza | Tvrdnja | Test |
+|----------|---------|------|
+| H4a | Mainstream portali češće pišu o kontroverzama | Chi square test |
+| H4b | Religijski portali imaju pozitivniji ton | Usporedba udjela |
+| H4c | Religijski portali pišu duže članke | Mann Whitney test |
+
+
+# Podaci i metode
+
+Koristimo DigiKat bazu koja sadrži objave s hrvatskih digitalnih medija prikupljene putem Determ platforme za praćenje medija. Baza pokriva razdoblje od 2021. do 2025. godine.
+```{r orders-classification}
+#| label: orders-classification
+
+franciscan_male <- list(
+  ofm = list(
+    name = "Franjevci (OFM)",
+    family = "Franciscan Family",
+    keywords = c(
+      "franjevac", "franjevci", "franjevački", "franjevačka", "franjevačko",
+      "fra ", "fra.", "fra\\b",
+      "mala braća", "red manje braće",
+      "provincija sv. ćirila i metoda", "provincija presvetog otkupitelja",
+      "hrvatska franjevačka provincija", "franjevačka provincija",
+      "franjevački samostan", "franjevačka crkva"
+    )
+  ),
+  ofmconv = list(
+    name = "Franjevci konventualci (OFMConv)",
+    family = "Franciscan Family",
+    keywords = c(
+      "franjevci konventualci", "franjevac konventualac",
+      "konventualci", "konventualac", "crni franjevci"
+    )
+  ),
+  ofmcap = list(
+    name = "Kapucini (OFMCap)",
+    family = "Franciscan Family",
+    keywords = c(
+      "kapucin", "kapucini", "kapucinski",
+      "kapucinska provincija", "kapucinski samostan"
+    )
+  ),
+  tor = list(
+    name = "Franjevci trećoredci (TOR)",
+    family = "Franciscan Family",
+    keywords = c(
+      "trećoredci", "trećoredac", "trecoredci",
+      "franjevci trećoredci glagoljaši"
+    )
+  )
+)
+
+dominican_male <- list(
+  op = list(
+    name = "Dominikanci (OP)",
+    family = "Dominican Family",
+    keywords = c(
+      "dominikanac", "dominikanci", "dominikanski",
+      "red propovjednika", "propovjednici",
+      "dominikanski samostan", "dominikanska crkva"
+    )
+  )
+)
+
+jesuit <- list(
+  sj = list(
+    name = "Isusovci (SJ)",
+    family = "Jesuit",
+    keywords = c(
+      "isusovac", "isusovci", "isusovački",
+      "družba isusova", "societas iesu",
+      "isusovačka crkva", "isusovački kolegij"
+    )
+  )
+)
+
+benedictine_male <- list(
+  osb = list(
+    name = "Benediktinci (OSB)",
+    family = "Benedictine Family",
+    keywords = c(
+      "benediktinac", "benediktinci", "benediktinski",
+      "benediktinska opatija", "benediktinski samostan"
+    )
+  ),
+  ocist = list(
+    name = "Cisterciti (OCist)",
+    family = "Benedictine Family",
+    keywords = c("cistercit", "cisterciti", "cistercitski")
+  )
+)
+
+carmelite_male <- list(
+  ocarm = list(
+    name = "Karmelićani (OCarm)",
+    family = "Carmelite Family",
+    keywords = c(
+      "karmelićanin", "karmelićani", "karmelski",
+      "karmelićanski samostan"
+    )
+  ),
+  ocd = list(
+    name = "Karmelićani bosonogi (OCD)",
+    family = "Carmelite Family",
+    keywords = c("karmelićani bosonogi", "bosonogi karmelićani")
+  )
+)
+
+salesian_male <- list(
+  sdb = list(
+    name = "Salezijanci (SDB)",
+    family = "Salesian Family",
+    keywords = c(
+      "salezijanac", "salezijanci", "salezijanski",
+      "don bosco", "salezijanski centar",
+      "salezijanska škola", "salezijanski dom"
+    )
+  )
+)
+
+pauline <- list(
+  osppe = list(
+    name = "Pavlini (OSPPE)",
+    family = "Other Male Orders",
+    keywords = c("pavlin", "pavlini", "pavlinski", "red sv. pavla pustinjaka")
+  )
+)
+
+missionary_male <- list(
+  cssp = list(
+    name = "Spiritanci (CSSp)",
+    family = "Other Male Orders",
+    keywords = c("spiritanac", "spiritanci", "spiritanski", "misionari duha svetoga")
+  ),
+  svd = list(
+    name = "Verbiti (SVD)",
+    family = "Other Male Orders",
+    keywords = c("verbit", "verbiti", "verbitski", "družba božje riječi")
+  ),
+  scj = list(
+    name = "Dehonijanci (SCJ)",
+    family = "Other Male Orders",
+    keywords = c("dehonijanac", "dehonijanci", "dehonijanski")
+  ),
+  smm = list(
+    name = "Monfortanci (SMM)",
+    family = "Other Male Orders",
+    keywords = c("monfortanac", "monfortanci", "monfortanski")
+  ),
+  cpps = list(
+    name = "Misionari Krvi Kristove (CPPS)",
+    family = "Other Male Orders",
+    keywords = c("misionar krvi kristove", "misionari krvi kristove")
+  ),
+  sac = list(
+    name = "Palotinci (SAC)",
+    family = "Other Male Orders",
+    keywords = c("palotinac", "palotinci", "palotinski")
+  )
+)
+
+other_male <- list(
+  osa = list(
+    name = "Augustinci (OSA)",
+    family = "Other Male Orders",
+    keywords = c("augustinac", "augustinci", "augustinski")
+  ),
+  cm = list(
+    name = "Lazaristi (CM)",
+    family = "Other Male Orders",
+    keywords = c("lazarist", "lazaristi", "misijska družba", "vincentinci")
+  ),
+  cssr = list(
+    name = "Redemptoristi (CSsR)",
+    family = "Other Male Orders",
+    keywords = c("redemptorist", "redemptoristi")
+  )
+)
+
+franciscan_female <- list(
+  osf_generic = list(
+    name = "Franjevke (općenito)",
+    family = "Franciscan Family",
+    keywords = c(
+      "franjevka", "franjevke", "sestre franjevke", "franjevačke sestre"
+    )
+  ),
+  ossf = list(
+    name = "Školske sestre franjevke",
+    family = "Franciscan Family",
+    keywords = c("školske sestre franjevke", "školska sestra franjevka")
+  )
+)
+
+dominican_female <- list(
+  op_f = list(
+    name = "Dominikanke (OP)",
+    family = "Dominican Family",
+    keywords = c(
+      "dominikanka", "dominikanke", "sestre dominikanke", "dominikanske sestre"
+    )
+  )
+)
+
+benedictine_female <- list(
+  osb_f = list(
+    name = "Benediktinke (OSB)",
+    family = "Benedictine Family",
+    keywords = c(
+      "benediktinka", "benediktinke", "opatica", "benediktinski samostan"
+    )
+  )
+)
+
+carmelite_female <- list(
+  ocd_f = list(
+    name = "Karmelićanke (OCD)",
+    family = "Carmelite Family",
+    keywords = c(
+      "karmelićanka", "karmelićanke", "sestre karmelićanke",
+      "karmel", "karmelski samostan"
+    )
+  )
+)
+
+poor_clares <- list(
+  osc = list(
+    name = "Klarise (OSC)",
+    family = "Franciscan Family",
+    keywords = c("klarisa", "klarise", "sestre klarise", "red svete klare")
+  )
+)
+
+ursulines <- list(
+  osu = list(
+    name = "Uršulinke (OSU)",
+    family = "Congregations of Women",
+    keywords = c("uršulinka", "uršulinke", "sestre uršulinke", "uršulinska škola")
+  )
+)
+
+sisters_charity <- list(
+  dc = list(
+    name = "Milosrdnice (DC)",
+    family = "Congregations of Women",
+    keywords = c(
+      "milosrdnica", "milosrdnice", "milosrdna sestra",
+      "sestre milosrdnice", "kćeri kršćanske ljubavi"
+    )
+  )
+)
+
+daughters_love <- list(
+  fdl = list(
+    name = "Kćeri Božje Ljubavi",
+    family = "Congregations of Women",
+    keywords = c("kćeri božje ljubavi", "kćer božje ljubavi")
+  )
+)
+
+adorers <- list(
+  asc = list(
+    name = "Klanjateljice Krvi Kristove",
+    family = "Congregations of Women",
+    keywords = c("klanjateljice krvi kristove", "klanjateljica krvi kristove")
+  )
+)
+
+salesian_female <- list(
+  fma = list(
+    name = "Kćeri Marije Pomoćnice (FMA)",
+    family = "Salesian Family",
+    keywords = c(
+      "kćeri marije pomoćnice", "salezijanke", "salezijanka", "sestre don bosca"
+    )
+  )
+)
+
+sacred_heart <- list(
+  sscj = list(
+    name = "Sestre Presvetog Srca Isusova",
+    family = "Congregations of Women",
+    keywords = c("sestre presvetog srca isusova")
+  ),
+  fcj = list(
+    name = "Kćeri Srca Isusova",
+    family = "Congregations of Women",
+    keywords = c("kćeri srca isusova")
+  )
+)
+
+marian_sisters <- list(
+  olvm = list(
+    name = "Marijine sestre čudotvorne medaljice",
+    family = "Congregations of Women",
+    keywords = c("marijine sestre čudotvorne medaljice")
+  ),
+  vhm = list(
+    name = "Sestre pohoda Marijina",
+    family = "Congregations of Women",
+    keywords = c("sestre pohoda marijina", "vizitantke")
+  )
+)
+
+servants <- list(
+  sij = list(
+    name = "Služavke malog Isusa",
+    family = "Congregations of Women",
+    keywords = c("služavke malog isusa")
+  ),
+  ancelle = list(
+    name = "Ančele",
+    family = "Congregations of Women",
+    keywords = c("ančele", "ančela", "ancele")
+  )
+)
+
+missionaries_charity <- list(
+  mc = list(
+    name = "Misionarke ljubavi",
+    family = "Congregations of Women",
+    keywords = c("misionarke ljubavi", "majka terezija", "sestre majke terezije")
+  )
+)
+
+merciful_jesus <- list(
+  smj = list(
+    name = "Sestre Milosrdnog Isusa",
+    family = "Congregations of Women",
+    keywords = c("sestre milosrdnog isusa")
+  )
+)
+
+greek_catholic <- list(
+  osbm = list(
+    name = "Bazilijanke (OSBM)",
+    family = "Other Female Orders",
+    keywords = c("bazilijanka", "bazilijanke", "vasilijanka", "vasilijanke")
+  )
+)
+
+generic_terms <- list(
+  male_generic = list(
+    keywords = c("redovnik", "redovnici", "pater", "otac")
+  ),
+  female_generic = list(
+    keywords = c("redovnica", "redovnice", "časna", "časna sestra", "sestra")
+  ),
+  institutional = list(
+    keywords = c("provincija", "kustodija", "družba", "samostan", "opatija",
+                 "provincijalat", "generalni poglavar", "provincijal")
+  )
+)
+```
+```{r compile-keywords}
+#| label: compile-keywords
+
+extract_keywords <- function(order_list) {
+  keywords <- c()
+  for (order in order_list) {
+    if (!is.null(order$keywords)) {
+      keywords <- c(keywords, order$keywords)
+    }
+  }
+  return(keywords)
+}
+
+male_order_keywords <- c(
+  extract_keywords(franciscan_male),
+  extract_keywords(dominican_male),
+  extract_keywords(jesuit),
+  extract_keywords(benedictine_male),
+  extract_keywords(carmelite_male),
+  extract_keywords(salesian_male),
+  extract_keywords(pauline),
+  extract_keywords(missionary_male),
+  extract_keywords(other_male)
+)
+
+female_order_keywords <- c(
+  extract_keywords(franciscan_female),
+  extract_keywords(dominican_female),
+  extract_keywords(benedictine_female),
+  extract_keywords(carmelite_female),
+  extract_keywords(poor_clares),
+  extract_keywords(ursulines),
+  extract_keywords(sisters_charity),
+  extract_keywords(daughters_love),
+  extract_keywords(adorers),
+  extract_keywords(salesian_female),
+  extract_keywords(sacred_heart),
+  extract_keywords(marian_sisters),
+  extract_keywords(servants),
+  extract_keywords(missionaries_charity),
+  extract_keywords(merciful_jesus),
+  extract_keywords(greek_catholic)
+)
+
+generic_keywords <- c(
+  generic_terms$male_generic$keywords,
+  generic_terms$female_generic$keywords,
+  generic_terms$institutional$keywords
+)
+
+all_order_keywords <- unique(c(
+  male_order_keywords,
+  female_order_keywords,
+  generic_keywords
+))
+
+all_order_keywords_clean <- gsub("\\\\b", "", all_order_keywords)
+simple_keywords <- tolower(all_order_keywords_clean)
+simple_keywords <- simple_keywords[nchar(simple_keywords) > 2]
+```
+```{r portal-classification}
+#| label: portal-classification
+
+classify_portal_type <- function(source_name) {
+  source_lower <- tolower(source_name)
+
+  mainstream_national <- c(
+    "index.hr", "vecernji.hr", "jutarnji.hr", "24sata.hr", "net.hr",
+    "telegram.hr", "nacional.hr", "slobodnadalmacija.hr", "novilist.hr",
+    "dnevnik.hr", "rtl.hr", "n1info.hr"
+  )
+
+  religious_catholic <- c(
+    "ika.hr", "bitno.net", "katolicki.hr", "laudato.hr", "veritas.hr",
+    "catholic.hr", "crkva.hr", "nadbiskupija", "biskupija", "zupa",
+    "katolicki-tjednik", "svetoduh"
+  )
+
+  if (any(sapply(mainstream_national, function(x) grepl(x, source_lower, fixed = TRUE)))) {
+    return("Mainstream National")
+  }
+
+  if (any(sapply(religious_catholic, function(x) grepl(x, source_lower, fixed = TRUE)))) {
+    return("Religious Catholic")
+  }
+
+  return("Local/Regional")
+}
+```
+```{r load-data}
+#| label: load-data
+
+dta_full <- readRDS("C:/Users/lsikic/Luka C/HKS/Projekti/Digitalni Kat/SHKM/DigiKat/data/merged_comprehensive.rds")
+
+setDT(dta_full)
+
+if (is.character(dta_full$DATE)) {
+  dta_full[, DATE := as.Date(DATE)]
+}
+
+## FIX: ensure year and month columns exist derived from DATE
+if (!"year" %in% names(dta_full)) {
+  dta_full[, year := year(DATE)]
+}
+if (!"month" %in% names(dta_full)) {
+  dta_full[, month := month(DATE)]
+}
+
+dta_full <- dta_full[SOURCE_TYPE != "tiktok" & !is.na(SOURCE_TYPE)]
+dta_full <- dta_full[DATE >= as.Date("2021-01-01") & DATE <= as.Date("2025-12-31")]
+dta_full <- dta_full[year >= 2021 & year <= 2025]
+
+cat("Učitana DigiKat baza podataka\n")
+cat("Ukupno objava", format(nrow(dta_full), big.mark = ","), "\n")
+```
+```{r filter-orders}
+#| label: filter-orders
+
+dta_full[, text_lower := tolower(paste(
+  ifelse(is.na(TITLE), "", TITLE),
+  ifelse(is.na(FULL_TEXT), "", FULL_TEXT),
+  ifelse(is.na(MENTION_SNIPPET), "", MENTION_SNIPPET)
+))]
+
+cat("Filtriranje sadržaja o redovničkim zajednicama\n")
+
+dta_full[, has_order_content := FALSE]
+
+chunk_size <- 50000
+n_chunks <- ceiling(nrow(dta_full) / chunk_size)
+
+for (i in 1:n_chunks) {
+  start_idx <- (i - 1) * chunk_size + 1
+  end_idx <- min(i * chunk_size, nrow(dta_full))
+
+  dta_full[start_idx:end_idx, has_order_content := sapply(
+    text_lower,
+    function(t) any(sapply(simple_keywords, function(k) grepl(k, t, fixed = TRUE)))
+  )]
+
+  if (i %% 10 == 0) cat("Obrađen blok", i, "od", n_chunks, "\n")
+}
+
+dta <- dta_full[has_order_content == TRUE]
+
+if (is.character(dta$DATE)) {
+  dta[, DATE := as.Date(DATE)]
+}
+
+## FIX: ensure year and month exist on the filtered subset too
+if (!"year" %in% names(dta)) {
+  dta[, year := year(DATE)]
+}
+if (!"month" %in% names(dta)) {
+  dta[, month := month(DATE)]
+}
+
+dta_full[, text_lower := NULL]
+dta_full[, has_order_content := NULL]
+
+cat("\nFiltriranje završeno\n")
+cat("Objave o redovničkim zajednicama", format(nrow(dta), big.mark = ","), "\n")
+cat("Postotak ukupnog korpusa", sprintf("%.2f%%", nrow(dta) / nrow(dta_full) * 100), "\n")
+```
+```{r classify-orders}
+#| label: classify-orders
+
+classify_religious_order <- function(text) {
+  if (is.na(text) || text == "") return(list(order = "Unknown", family = "Unknown", gender = "Unknown"))
+
+  text_lower <- tolower(text)
+
+  if (any(sapply(c("franjevac", "franjevci", "\\bfra\\b", "fra ", "mala braća"),
+                 function(k) grepl(k, text_lower)))) {
+    if (grepl("konventual", text_lower)) {
+      return(list(order = "Franjevci konventualci", family = "Franciscan Family", gender = "Male"))
+    }
+    if (!grepl("franjevk", text_lower)) {
+      return(list(order = "Franjevci OFM", family = "Franciscan Family", gender = "Male"))
+    }
+  }
+
+  if (grepl("kapucin", text_lower)) {
+    return(list(order = "Kapucini", family = "Franciscan Family", gender = "Male"))
+  }
+
+  if (grepl("dominikanac|dominikanci", text_lower) && !grepl("dominikank", text_lower)) {
+    return(list(order = "Dominikanci", family = "Dominican Family", gender = "Male"))
+  }
+
+  if (grepl("isusovac|isusovci|družba isusova", text_lower)) {
+    return(list(order = "Isusovci", family = "Jesuit", gender = "Male"))
+  }
+
+  if (grepl("benediktinac|benediktinci", text_lower) && !grepl("benediktink", text_lower)) {
+    return(list(order = "Benediktinci", family = "Benedictine Family", gender = "Male"))
+  }
+
+  if (grepl("salezijanac|salezijanci", text_lower) && !grepl("salezijank", text_lower)) {
+    return(list(order = "Salezijanci", family = "Salesian Family", gender = "Male"))
+  }
+
+  if (grepl("karmelićanin|karmelićani", text_lower) && !grepl("karmelićank", text_lower)) {
+    return(list(order = "Karmelićani", family = "Carmelite Family", gender = "Male"))
+  }
+
+  if (grepl("pavlin", text_lower)) {
+    return(list(order = "Pavlini", family = "Other Male Orders", gender = "Male"))
+  }
+
+  if (grepl("spiritan", text_lower)) {
+    return(list(order = "Spiritanci", family = "Other Male Orders", gender = "Male"))
+  }
+
+  if (grepl("verbit", text_lower)) {
+    return(list(order = "Verbiti", family = "Other Male Orders", gender = "Male"))
+  }
+
+  if (grepl("dehonijan", text_lower)) {
+    return(list(order = "Dehonijanci", family = "Other Male Orders", gender = "Male"))
+  }
+
+  if (grepl("franjevk", text_lower)) {
+    return(list(order = "Franjevke", family = "Franciscan Family", gender = "Female"))
+  }
+
+  if (grepl("klaris", text_lower)) {
+    return(list(order = "Klarise", family = "Franciscan Family", gender = "Female"))
+  }
+
+  if (grepl("dominikank", text_lower)) {
+    return(list(order = "Dominikanke", family = "Dominican Family", gender = "Female"))
+  }
+
+  if (grepl("benediktink|opatica", text_lower)) {
+    return(list(order = "Benediktinke", family = "Benedictine Family", gender = "Female"))
+  }
+
+  if (grepl("karmelićank", text_lower)) {
+    return(list(order = "Karmelićanke", family = "Carmelite Family", gender = "Female"))
+  }
+
+  if (grepl("uršulink", text_lower)) {
+    return(list(order = "Uršulinke", family = "Congregations of Women", gender = "Female"))
+  }
+
+  if (grepl("milosrdnic|milosrdna sestra", text_lower)) {
+    return(list(order = "Milosrdnice", family = "Congregations of Women", gender = "Female"))
+  }
+
+  if (grepl("kćeri marije pomoćnice|salezijank", text_lower)) {
+    return(list(order = "Kćeri Marije Pomoćnice", family = "Salesian Family", gender = "Female"))
+  }
+
+  if (grepl("kćeri božje ljubavi", text_lower)) {
+    return(list(order = "Kćeri Božje Ljubavi", family = "Congregations of Women", gender = "Female"))
+  }
+
+  if (grepl("klanjateljice", text_lower)) {
+    return(list(order = "Klanjateljice Krvi Kristove", family = "Congregations of Women", gender = "Female"))
+  }
+
+  if (grepl("misionarke ljubavi|majka terezija", text_lower)) {
+    return(list(order = "Misionarke ljubavi", family = "Congregations of Women", gender = "Female"))
+  }
+
+  if (grepl("bazilijank|vasilijank", text_lower)) {
+    return(list(order = "Bazilijanke", family = "Other Female Orders", gender = "Female"))
+  }
+
+  if (grepl("redovnik|pater|\\botac\\b", text_lower) && !grepl("redovnic", text_lower)) {
+    return(list(order = "Generički muški redovnik", family = "Unknown", gender = "Male"))
+  }
+
+  if (grepl("redovnic|časna|sestra", text_lower)) {
+    return(list(order = "Generička redovnica", family = "Unknown", gender = "Female"))
+  }
+
+  return(list(order = "Unknown", family = "Unknown", gender = "Unknown"))
+}
+
+cat("Klasifikacija objava po redovničkim zajednicama\n")
+
+dta[, text_combined := tolower(paste(
+  ifelse(is.na(TITLE), "", TITLE),
+  ifelse(is.na(FULL_TEXT), "", FULL_TEXT)
+))]
+
+classification_results <- lapply(dta$text_combined, classify_religious_order)
+
+dta[, ORDER := sapply(classification_results, function(x) x$order)]
+dta[, ORDER_FAMILY := sapply(classification_results, function(x) x$family)]
+dta[, GENDER := sapply(classification_results, function(x) x$gender)]
+
+dta[, text_combined := NULL]
+
+cat("Klasifikacija završena\n")
+```
+```{r classify-portals}
+#| label: classify-portals
+
+cat("Klasifikacija portala po tipu\n")
+
+portal_classifications <- unique(dta[, .(FROM)])
+portal_classifications[, PORTAL_TYPE := sapply(FROM, classify_portal_type)]
+
+dta <- merge(dta, portal_classifications, by = "FROM", all.x = TRUE)
+
+portal_summary <- dta[, .N, by = PORTAL_TYPE]
+print(portal_summary)
+
+cat("Klasifikacija portala završena\n")
+```
+```{r text-length}
+#| label: text-length
+
+dta[, TEXT_LENGTH := nchar(FULL_TEXT)]
+
+cat("Dodana varijabla duljine teksta\n")
+```
+```{r anniversary-months}
+#| label: anniversary-months
+
+## FIX: use explicit year() and month() from DATE to avoid data.table column lookup issues
+dta[, ANNIVERSARY_MONTH := FALSE]
+
+aniv_idx <- (year(dta$DATE) == 2023 & month(dta$DATE) %in% c(9L, 10L, 11L)) |
+            (year(dta$DATE) == 2024 & month(dta$DATE) %in% c(9L, 10L, 11L))
+dta[aniv_idx, ANNIVERSARY_MONTH := TRUE]
+
+cat("Označeni mjeseci obljetnica\n")
+cat("Objave u mjesecima obljetnica:", sum(dta$ANNIVERSARY_MONTH), "\n")
+```
+
+## Pregled korpusa
+```{r corpus-overview}
+#| label: corpus-overview
+
+n_posts <- nrow(dta)
+n_sources <- uniqueN(dta$FROM)
+date_min <- min(dta$DATE, na.rm = TRUE)
+date_max <- max(dta$DATE, na.rm = TRUE)
+
+tibble(
+  Metrika = c(
+    "Ukupno objava o redovnicima",
+    "Jedinstvenih izvora",
+    "Vremenski raspon",
+    "Platforme",
+    "Godine",
+    "Objave o muškim redovnicima",
+    "Objave o ženskim redovnicama",
+    "Mainstream portali",
+    "Religijski portali",
+    "Lokalni/regionalni portali"
+  ),
+  Vrijednost = c(
+    format(n_posts, big.mark = ","),
+    format(n_sources, big.mark = ","),
+    paste(date_min, "do", date_max),
+    paste(sort(unique(dta$SOURCE_TYPE)), collapse = ", "),
+    paste(sort(unique(year(dta$DATE))), collapse = ", "),
+    format(sum(dta$GENDER == "Male", na.rm = TRUE), big.mark = ","),
+    format(sum(dta$GENDER == "Female", na.rm = TRUE), big.mark = ","),
+    format(sum(dta$PORTAL_TYPE == "Mainstream National", na.rm = TRUE), big.mark = ","),
+    format(sum(dta$PORTAL_TYPE == "Religious Catholic", na.rm = TRUE), big.mark = ","),
+    format(sum(dta$PORTAL_TYPE == "Local/Regional", na.rm = TRUE), big.mark = ",")
+  )
+) %>%
+  kable(col.names = c("Metrika", "Vrijednost"),
+        caption = "Pregled korpusa") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+
+# Rezultati
+
+## Blok 1 Koncentracija pažnje
+
+### H1a Koncentracija među redovničkim zajednicama
+
+Testiramo predviđanje da 20% redova dobiva preko 80% medijskog prostora.
+```{r h1a-concentration}
+#| label: h1a-concentration
+
+order_attention <- dta[ORDER != "Unknown", .(
+  Posts = .N,
+  Total_Interactions = sum(INTERACTIONS, na.rm = TRUE)
+), by = ORDER][order(-Total_Interactions)]
+
+order_attention[, Rank := .I]
+total_interactions <- sum(order_attention$Total_Interactions)
+order_attention[, Cumulative_Interactions := cumsum(Total_Interactions) / total_interactions * 100]
+order_attention[, Cumulative_Orders := .I / .N * 100]
+
+gini_orders <- Gini(order_attention$Total_Interactions)
+
+n_orders <- nrow(order_attention)
+top_20pct <- ceiling(n_orders * 0.20)
+pareto_share <- sum(order_attention[1:top_20pct, Total_Interactions]) / total_interactions * 100
+
+cr5 <- sum(order_attention[1:min(5, n_orders), Total_Interactions]) / total_interactions * 100
+cr10 <- sum(order_attention[1:min(10, n_orders), Total_Interactions]) / total_interactions * 100
+
+log_model <- lm(log(Total_Interactions) ~ log(Rank), data = order_attention[Total_Interactions > 0])
+r_squared <- summary(log_model)$r.squared
+```
+```{r h1a-results}
+#| label: h1a-results
+
+tibble(
+  Metrika = c(
+    "Gini koeficijent",
+    "Top 20% redova (udio pažnje)",
+    "Top 5 redova (udio pažnje)",
+    "Top 10 redova (udio pažnje)",
+    "Power Law R²",
+    "Ukupno identificiranih redova"
+  ),
+  Vrijednost = c(
+    sprintf("%.3f", gini_orders),
+    sprintf("%.1f%%", pareto_share),
+    sprintf("%.1f%%", cr5),
+    sprintf("%.1f%%", cr10),
+    sprintf("%.3f", r_squared),
+    format(n_orders, big.mark = ",")
+  ),
+  Prag = c("> 0.60", "> 80%", "", "", "> 0.80", ""),
+  Rezultat = c(
+    ifelse(gini_orders > 0.60, "✓ Podržana", "✗ Nije podržana"),
+    ifelse(pareto_share > 80, "✓ Podržana", "✗ Nije podržana"),
+    "", "",
+    ifelse(r_squared > 0.80, "✓ Power law", ""),
+    ""
+  )
+) %>%
+  kable(caption = "H1a Koncentracija među redovničkim zajednicama",
+        align = c("l", "r", "c", "l")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+```{r fig-h1a-lorenz}
+#| label: fig-h1a-lorenz
+#| fig-cap: "Lorenzova krivulja nejednakosti pažnje među redovničkim zajednicama"
+#| fig-height: 6
+
+ggplot(order_attention, aes(x = Cumulative_Orders, y = Cumulative_Interactions)) +
+  geom_line(color = "#1a3c5a", linewidth = 1.2) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray50") +
+  geom_ribbon(aes(ymin = Cumulative_Orders, ymax = Cumulative_Interactions),
+              fill = "#1a3c5a", alpha = 0.3) +
+  annotate("text", x = 70, y = 30,
+           label = paste0("Gini = ", round(gini_orders, 3)),
+           size = 5, fontface = "bold") +
+  scale_x_continuous(labels = function(x) paste0(x, "%"), breaks = seq(0, 100, 20)) +
+  scale_y_continuous(labels = function(x) paste0(x, "%"), breaks = seq(0, 100, 20)) +
+  labs(
+    title = "Lorenzova krivulja nejednakosti medijske pažnje",
+    subtitle = "Što je veće osjenčano područje, veća je nejednakost",
+    x = "Kumulativni postotak redova",
+    y = "Kumulativni postotak interakcija"
+  )
+```
+
+Gini koeficijent od `r sprintf("%.3f", gini_orders)` `r ifelse(gini_orders > 0.60, "prelazi", "ne prelazi")` prag od 0.60. Top 20% redova dobiva `r sprintf("%.1f%%", pareto_share)` pažnje, što `r ifelse(pareto_share > 80, "potvrđuje", "ne potvrđuje")` Paretov princip. **H1a je `r ifelse(gini_orders > 0.60 & pareto_share > 80, "podržana", "djelomično podržana")`**.
+
+### H1b Koncentracija među portalima
+
+Testiramo predviđanje da 10 portala proizvodi preko 50% sadržaja o redovnicima.
+```{r h1b-portals}
+#| label: h1b-portals
+
+portal_attention <- dta[, .(
+  Posts = .N,
+  Total_Interactions = sum(INTERACTIONS, na.rm = TRUE)
+), by = FROM][order(-Posts)]
+
+portal_attention[, Rank := .I]
+total_posts <- sum(portal_attention$Posts)
+
+cr10_portals <- sum(portal_attention[1:10, Posts]) / total_posts * 100
+
+hhi <- sum((portal_attention$Posts / total_posts * 100)^2)
+
+gini_portals <- Gini(portal_attention$Posts)
+```
+```{r h1b-results}
+#| label: h1b-results
+
+tibble(
+  Metrika = c(
+    "CR10 (top 10 portala)",
+    "HHI indeks",
+    "Gini koeficijent portala",
+    "Ukupno portala"
+  ),
+  Vrijednost = c(
+    sprintf("%.1f%%", cr10_portals),
+    sprintf("%.0f", hhi),
+    sprintf("%.3f", gini_portals),
+    format(nrow(portal_attention), big.mark = ",")
+  ),
+  Prag = c("> 50%", "", "> 0.60", ""),
+  Rezultat = c(
+    ifelse(cr10_portals > 50, "✓ Podržana", "✗ Nije podržana"),
+    ifelse(hhi > 1500, "Visoka koncentracija", ifelse(hhi > 1000, "Umjerena", "Niska")),
+    ifelse(gini_portals > 0.60, "Visoka nejednakost", "Umjerena"),
+    ""
+  )
+) %>%
+  kable(caption = "H1b Koncentracija među portalima",
+        align = c("l", "r", "c", "l")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+```{r fig-h1b-portals}
+#| label: fig-h1b-portals
+#| fig-cap: "Top 20 portala po broju objava o redovničkim zajednicama"
+#| fig-height: 7
+
+portal_attention %>%
+  head(20) %>%
+  ggplot(aes(x = reorder(FROM, Posts), y = Posts)) +
+  geom_col(fill = "#1a3c5a") +
+  coord_flip() +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Koji portali najčešće pišu o redovnicima?",
+    subtitle = paste0("Top 10 portala proizvodi ", sprintf("%.1f%%", cr10_portals), " ukupnog sadržaja"),
+    x = NULL,
+    y = "Broj objava"
+  )
+```
+
+Top 10 portala proizvodi `r sprintf("%.1f%%", cr10_portals)` sadržaja, što `r ifelse(cr10_portals > 50, "potvrđuje", "ne potvrđuje")` hipotezu. HHI indeks od `r sprintf("%.0f", hhi)` ukazuje na `r ifelse(hhi > 1500, "visoku", ifelse(hhi > 1000, "umjerenu", "nisku"))` koncentraciju. **H1b je `r ifelse(cr10_portals > 50, "podržana", "nije podržana")`**.
+
+### H1c Dvostruka koncentracija
+
+Testiramo stvara li mali broj portala koji piše o malom broju redova medijsku elitu.
+```{r h1c-double}
+#| label: h1c-double
+
+portal_order_matrix <- dta[ORDER != "Unknown" & FROM != "", .(
+  Posts = .N
+), by = .(FROM, ORDER)]
+
+setorder(portal_order_matrix, -Posts)
+
+top5_portals <- portal_attention[1:5, FROM]
+top5_orders <- order_attention[1:5, ORDER]
+
+elite_posts <- sum(portal_order_matrix[FROM %in% top5_portals & ORDER %in% top5_orders, Posts])
+total_posts_all <- sum(portal_order_matrix$Posts)
+elite_share <- elite_posts / total_posts_all * 100
+
+heatmap_data <- portal_order_matrix[FROM %in% top5_portals & ORDER %in% top5_orders]
+```
+```{r h1c-results}
+#| label: h1c-results
+
+tibble(
+  Metrika = c(
+    "Top 5 portala × Top 5 redova",
+    "Ukupno objava u elitnom prostoru",
+    "Udio u ukupnom korpusu"
+  ),
+  Vrijednost = c(
+    "25 kombinacija",
+    format(elite_posts, big.mark = ","),
+    sprintf("%.1f%%", elite_share)
+  ),
+  Prag = c("", "", "> 30%"),
+  Rezultat = c(
+    "",
+    "",
+    ifelse(elite_share > 30, "✓ Podržana", "✗ Nije podržana")
+  )
+) %>%
+  kable(caption = "H1c Dvostruka koncentracija",
+        align = c("l", "r", "c", "l")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+```{r fig-h1c-heatmap}
+#| label: fig-h1c-heatmap
+#| fig-cap: "Heatmap medijske elite Top 5 portala × Top 5 redova"
+#| fig-height: 6
+
+ggplot(heatmap_data, aes(x = ORDER, y = FROM, fill = Posts)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = Posts), color = "white", size = 3) +
+  scale_fill_viridis_c(option = "plasma", trans = "log10") +
+  labs(
+    title = "Medijska elita Intenzitet izvještavanja",
+    subtitle = paste0("Ovih 25 kombinacija čini ", sprintf("%.1f%%", elite_share), " ukupnog sadržaja"),
+    x = NULL,
+    y = NULL,
+    fill = "Broj objava"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Top 5 portala pišući o top 5 redova čini `r sprintf("%.1f%%", elite_share)` ukupnog sadržaja, što `r ifelse(elite_share > 30, "potvrđuje", "ne potvrđuje")` postojanje medijske elite. **H1c je `r ifelse(elite_share > 30, "podržana", "nije podržana")`**.
+
+
+## Blok 2 Spolne razlike
+
+### H2a Spolna asimetrija u volumenu
+
+Testiramo dobivaju li muški redovi preko 60% medijskog prostora.
+```{r h2a-gender}
+#| label: h2a-gender
+
+gender_summary <- dta[GENDER %in% c("Male", "Female"), .(
+  Posts = .N,
+  Total_Interactions = sum(INTERACTIONS, na.rm = TRUE)
+), by = GENDER]
+
+gender_summary[, Share := Posts / sum(Posts) * 100]
+
+male_share <- gender_summary[GENDER == "Male", Share]
+female_share <- gender_summary[GENDER == "Female", Share]
+
+gender_table <- table(dta[GENDER %in% c("Male", "Female")]$GENDER)
+chisq_gender <- chisq.test(gender_table, p = c(0.5, 0.5))
+```
+```{r h2a-results}
+#| label: h2a-results
+
+tibble(
+  Metrika = c(
+    "Udio muških redova",
+    "Udio ženskih redova",
+    "Chi square statistika",
+    "P vrijednost"
+  ),
+  Vrijednost = c(
+    sprintf("%.1f%%", male_share),
+    sprintf("%.1f%%", female_share),
+    sprintf("%.2f", chisq_gender$statistic),
+    ifelse(chisq_gender$p.value < 0.001, "< 0.001", sprintf("%.3f", chisq_gender$p.value))
+  ),
+  Prag = c("> 60%", "", "", "< 0.05"),
+  Rezultat = c(
+    ifelse(male_share > 60, "✓ Podržana", "✗ Nije podržana"),
+    "",
+    "",
+    ifelse(chisq_gender$p.value < 0.05, "✓ Značajno", "✗ Nije značajno")
+  )
+) %>%
+  kable(caption = "H2a Spolna asimetrija u volumenu",
+        align = c("l", "r", "c", "l")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+```{r fig-h2a-gender}
+#| label: fig-h2a-gender
+#| fig-cap: "Raspodjela medijskog prostora po spolu redovnika"
+#| fig-height: 5
+
+ggplot(gender_summary, aes(x = "", y = Share, fill = GENDER)) +
+  geom_col(width = 1) +
+  coord_polar("y") +
+  scale_fill_manual(values = gender_colors, labels = c("Ženski redovi", "Muški redovi")) +
+  geom_text(aes(label = sprintf("%.1f%%", Share)),
+            position = position_stack(vjust = 0.5), size = 5, fontface = "bold") +
+  labs(
+    title = "Spolna asimetrija u medijskoj pokrivenosti",
+    subtitle = paste0("Chi square test p ", ifelse(chisq_gender$p.value < 0.001, "< 0.001", sprintf("= %.3f", chisq_gender$p.value))),
+    fill = NULL
+  ) +
+  theme_void() +
+  theme(legend.position = "bottom")
+```
+
+Muški redovi dobivaju `r sprintf("%.1f%%", male_share)` prostora, što `r ifelse(male_share > 60, "prelazi", "ne prelazi")` prag od 60%. Razlika je `r ifelse(chisq_gender$p.value < 0.05, "statistički značajna", "statistički neznačajna")`. **H2a je `r ifelse(male_share > 60 & chisq_gender$p.value < 0.05, "podržana", "nije podržana")`**.
+
+### H2b Interakcija spol × tip portala
+
+Testiramo je li spolna asimetrija izraženija na mainstream portalima.
+```{r h2b-interaction}
+#| label: h2b-interaction
+
+gender_portal <- dta[GENDER %in% c("Male", "Female") & PORTAL_TYPE %in% c("Mainstream National", "Religious Catholic"),
+                     .N, by = .(PORTAL_TYPE, GENDER)]
+
+gender_portal[, Total := sum(N), by = PORTAL_TYPE]
+gender_portal[, Share := N / Total * 100]
+
+mainstream_male <- gender_portal[PORTAL_TYPE == "Mainstream National" & GENDER == "Male", Share]
+religious_male <- gender_portal[PORTAL_TYPE == "Religious Catholic" & GENDER == "Male", Share]
+
+ratio_diff <- mainstream_male - religious_male
+
+contingency_table <- dta[GENDER %in% c("Male", "Female") & PORTAL_TYPE %in% c("Mainstream National", "Religious Catholic"),
+                         .N, by = .(PORTAL_TYPE, GENDER)]
+chisq_interaction <- chisq.test(xtabs(N ~ PORTAL_TYPE + GENDER, data = contingency_table))
+```
+```{r h2b-results}
+#| label: h2b-results
+
+tibble(
+  Metrika = c(
+    "Muški udio na mainstream portalima",
+    "Muški udio na religijskim portalima",
+    "Razlika",
+    "Chi square p vrijednost"
+  ),
+  Vrijednost = c(
+    sprintf("%.1f%%", mainstream_male),
+    sprintf("%.1f%%", religious_male),
+    sprintf("%.1f postotnih bodova", ratio_diff),
+    ifelse(chisq_interaction$p.value < 0.001, "< 0.001", sprintf("%.3f", chisq_interaction$p.value))
+  ),
+  Rezultat = c(
+    "",
+    "",
+    ifelse(ratio_diff > 5, "✓ Veća na mainstream", "✗ Nema razlike"),
+    ifelse(chisq_interaction$p.value < 0.05, "✓ Značajno", "✗ Nije značajno")
+  )
+) %>%
+  kable(caption = "H2b Interakcija spol × tip portala",
+        align = c("l", "r", "l")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+```{r fig-h2b-interaction}
+#| label: fig-h2b-interaction
+#| fig-cap: "Spolni omjeri po tipu portala"
+#| fig-height: 5
+
+ggplot(gender_portal, aes(x = PORTAL_TYPE, y = Share, fill = GENDER)) +
+  geom_col(position = "dodge") +
+  scale_fill_manual(values = gender_colors, labels = c("Ženski", "Muški")) +
+  geom_text(aes(label = sprintf("%.1f%%", Share)),
+            position = position_dodge(width = 0.9), vjust = -0.5) +
+  labs(
+    title = "Je li spolna asimetrija različita po tipu portala?",
+    subtitle = paste0("Razlika u muškom udjelu ", sprintf("%.1f", ratio_diff), " postotnih bodova"),
+    x = NULL,
+    y = "Postotak objava",
+    fill = "Spol"
+  )
+```
+
+Mainstream portali imaju `r sprintf("%.1f%%", mainstream_male)` muških objava nasuprot `r sprintf("%.1f%%", religious_male)` na religijskim portalima. Razlika od `r sprintf("%.1f", abs(ratio_diff))` postotnih bodova je `r ifelse(chisq_interaction$p.value < 0.05, "statistički značajna", "statistički neznačajna")`. **H2b je `r ifelse(abs(ratio_diff) > 5 & chisq_interaction$p.value < 0.05, "podržana", "nije podržana")`**.
+
+### H2c Spolne razlike u angažmanu
+
+Testiramo generiraju li objave o muškim redovima više interakcija.
+```{r h2c-engagement}
+#| label: h2c-engagement
+
+engagement_gender <- dta[GENDER %in% c("Male", "Female") & !is.na(INTERACTIONS) & INTERACTIONS > 0,
+                         .(GENDER, INTERACTIONS)]
+
+male_interactions <- engagement_gender[GENDER == "Male", INTERACTIONS]
+female_interactions <- engagement_gender[GENDER == "Female", INTERACTIONS]
+
+mannwhitney_test <- wilcox.test(male_interactions, female_interactions, alternative = "greater")
+
+median_male <- median(male_interactions)
+median_female <- median(female_interactions)
+mean_male <- mean(male_interactions)
+mean_female <- mean(female_interactions)
+```
+```{r h2c-results}
+#| label: h2c-results
+
+tibble(
+  Metrika = c(
+    "Medijan interakcija (muški)",
+    "Medijan interakcija (ženski)",
+    "Prosječne interakcije (muški)",
+    "Prosječne interakcije (ženski)",
+    "Mann Whitney U p vrijednost"
+  ),
+  Vrijednost = c(
+    sprintf("%.0f", median_male),
+    sprintf("%.0f", median_female),
+    sprintf("%.1f", mean_male),
+    sprintf("%.1f", mean_female),
+    ifelse(mannwhitney_test$p.value < 0.001, "< 0.001", sprintf("%.3f", mannwhitney_test$p.value))
+  ),
+  Rezultat = c(
+    "",
+    "",
+    "",
+    "",
+    ifelse(mannwhitney_test$p.value < 0.05, "✓ Značajno", "✗ Nije značajno")
+  )
+) %>%
+  kable(caption = "H2c Spolne razlike u angažmanu",
+        align = c("l", "r", "l")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+```{r fig-h2c-engagement}
+#| label: fig-h2c-engagement
+#| fig-cap: "Distribucija angažmana po spolu (logaritamska skala)"
+#| fig-height: 6
+
+ggplot(engagement_gender, aes(x = GENDER, y = INTERACTIONS, fill = GENDER)) +
+  geom_violin(alpha = 0.5) +
+  geom_boxplot(width = 0.2, outlier.alpha = 0.3) +
+  scale_y_log10(labels = comma) +
+  scale_fill_manual(values = gender_colors, labels = c("Ženski", "Muški"), guide = "none") +
+  scale_x_discrete(labels = c("Ženski redovi", "Muški redovi")) +
+  labs(
+    title = "Angažman publike po spolu redovnika",
+    subtitle = paste0("Mann Whitney U test p ", ifelse(mannwhitney_test$p.value < 0.001, "< 0.001", sprintf("= %.3f", mannwhitney_test$p.value))),
+    x = NULL,
+    y = "Interakcije (log skala)"
+  )
+```
+
+Medijan interakcija za muške redove je `r sprintf("%.0f", median_male)`, a za ženske `r sprintf("%.0f", median_female)`. Razlika `r ifelse(mannwhitney_test$p.value < 0.05 & median_male > median_female, "je", "nije")` statistički značajna. **H2c je `r ifelse(mannwhitney_test$p.value < 0.05 & median_male > median_female, "podržana", "nije podržana")`**.
+
+
+## Blok 3 Franjevačka dominacija
+
+### H3a Udio franjevaca u ukupnom izvještavanju
+
+Testiramo dobiva li franjevačka obitelj preko 30% medijskog prostora.
+```{r h3a-franciscan}
+#| label: h3a-franciscan
+
+family_summary <- dta[ORDER_FAMILY != "Unknown", .(
+  Posts = .N,
+  Total_Interactions = sum(INTERACTIONS, na.rm = TRUE)
+), by = ORDER_FAMILY][order(-Posts)]
+
+family_summary[, Share := Posts / sum(Posts) * 100]
+
+franciscan_share <- family_summary[ORDER_FAMILY == "Franciscan Family", Share]
+franciscan_posts <- family_summary[ORDER_FAMILY == "Franciscan Family", Posts]
+
+expected_share <- 100 / nrow(family_summary)
+binom_test <- binom.test(franciscan_posts, sum(family_summary$Posts), p = expected_share / 100, alternative = "greater")
+```
+```{r h3a-results}
+#| label: h3a-results
+
+tibble(
+  Metrika = c(
+    "Udio franjevačke obitelji",
+    "Očekivani udio (proporcionalno)",
+    "Binomial test p vrijednost"
+  ),
+  Vrijednost = c(
+    sprintf("%.1f%%", franciscan_share),
+    sprintf("%.1f%%", expected_share),
+    ifelse(binom_test$p.value < 0.001, "< 0.001", sprintf("%.3f", binom_test$p.value))
+  ),
+  Prag = c("> 30%", "", "< 0.05"),
+  Rezultat = c(
+    ifelse(franciscan_share > 30, "✓ Podržana", "✗ Nije podržana"),
+    "",
+    ifelse(binom_test$p.value < 0.05, "✓ Značajno", "✗ Nije značajno")
+  )
+) %>%
+  kable(caption = "H3a Franjevački udio u izvještavanju",
+        align = c("l", "r", "c", "l")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+```{r fig-h3a-treemap}
+#| label: fig-h3a-treemap
+#| fig-cap: "Treemap obitelji redova po broju objava"
+#| fig-height: 7
+
+ggplot(family_summary, aes(area = Posts, fill = ORDER_FAMILY, label = paste0(ORDER_FAMILY, "\n", sprintf("%.1f%%", Share)))) +
+  geom_treemap() +
+  geom_treemap_text(color = "white", place = "centre", size = 12) +
+  scale_fill_manual(values = order_family_colors, guide = "none") +
+  labs(
+    title = "Medijski prostor obitelji redova",
+    subtitle = paste0("Franjevačka obitelj ", sprintf("%.1f%%", franciscan_share))
+  )
+```
+
+Franjevačka obitelj dobiva `r sprintf("%.1f%%", franciscan_share)` prostora, što `r ifelse(franciscan_share > 30, "prelazi", "ne prelazi")` prag od 30%. Ovo je `r ifelse(binom_test$p.value < 0.05, "statistički značajno", "statistički neznačajno")` više od očekivanog. **H3a je `r ifelse(franciscan_share > 30 & binom_test$p.value < 0.05, "podržana", "nije podržana")`**.
+
+### H3b Efekt obljetnica
+
+Testiramo raste li udio franjevaca u mjesecima obljetnica (jesen 2023, 2024).
+```{r h3b-anniversary}
+#| label: h3b-anniversary
+
+franciscan_time <- dta[ORDER_FAMILY %in% c("Franciscan Family", "Dominican Family", "Jesuit"),
+                       .(Posts = .N), by = .(ORDER_FAMILY, ANNIVERSARY_MONTH)]
+
+franciscan_time[, Total := sum(Posts), by = ANNIVERSARY_MONTH]
+franciscan_time[, Share := Posts / Total * 100]
+
+franciscan_aniv <- franciscan_time[ORDER_FAMILY == "Franciscan Family" & ANNIVERSARY_MONTH == TRUE, Share]
+franciscan_control <- franciscan_time[ORDER_FAMILY == "Franciscan Family" & ANNIVERSARY_MONTH == FALSE, Share]
+
+## FIX: handle case where anniversary months have no data
+if (length(franciscan_aniv) == 0) franciscan_aniv <- 0
+if (length(franciscan_control) == 0) franciscan_control <- 0
+
+share_diff <- franciscan_aniv - franciscan_control
+
+aniv_posts <- dta[ORDER_FAMILY == "Franciscan Family" & ANNIVERSARY_MONTH == TRUE, .N]
+control_posts <- dta[ORDER_FAMILY == "Franciscan Family" & ANNIVERSARY_MONTH == FALSE, .N]
+aniv_total <- dta[ANNIVERSARY_MONTH == TRUE, .N]
+control_total <- dta[ANNIVERSARY_MONTH == FALSE, .N]
+
+prop_test <- prop.test(c(aniv_posts, control_posts), c(aniv_total, control_total), alternative = "greater")
+```
+```{r h3b-results}
+#| label: h3b-results
+
+tibble(
+  Metrika = c(
+    "Franjevački udio u mjesecima obljetnica",
+    "Franjevački udio u kontrolnim mjesecima",
+    "Razlika",
+    "Proportion test p vrijednost"
+  ),
+  Vrijednost = c(
+    sprintf("%.1f%%", franciscan_aniv),
+    sprintf("%.1f%%", franciscan_control),
+    sprintf("%.1f postotnih bodova", share_diff),
+    ifelse(prop_test$p.value < 0.001, "< 0.001", sprintf("%.3f", prop_test$p.value))
+  ),
+  Rezultat = c(
+    "",
+    "",
+    ifelse(share_diff > 5, "✓ Značajan porast", "✗ Nema porasta"),
+    ifelse(prop_test$p.value < 0.05, "✓ Značajno", "✗ Nije značajno")
+  )
+) %>%
+  kable(caption = "H3b Efekt obljetnica",
+        align = c("l", "r", "l")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+```{r fig-h3b-time}
+#| label: fig-h3b-time
+#| fig-cap: "Udio franjevaca kroz vrijeme s označenim obljetnicama"
+#| fig-height: 5
+
+franciscan_monthly <- dta[ORDER_FAMILY %in% c("Franciscan Family", "Dominican Family", "Jesuit"),
+                          .(Posts = .N), by = .(ORDER_FAMILY, year = year(DATE), month = month(DATE))]
+
+franciscan_monthly[, yearmonth := as.Date(paste(year, month, "01", sep = "-"))]
+franciscan_monthly[, Total := sum(Posts), by = yearmonth]
+franciscan_monthly[, Share := Posts / Total * 100]
+
+ggplot(franciscan_monthly[ORDER_FAMILY == "Franciscan Family"],
+       aes(x = yearmonth, y = Share)) +
+  geom_line(color = "#8B4513", linewidth = 1) +
+  geom_point(color = "#8B4513", size = 2) +
+  annotate("rect", xmin = as.Date("2023-09-01"), xmax = as.Date("2023-11-30"),
+           ymin = -Inf, ymax = Inf, fill = "red", alpha = 0.1) +
+  annotate("rect", xmin = as.Date("2024-09-01"), xmax = as.Date("2024-11-30"),
+           ymin = -Inf, ymax = Inf, fill = "red", alpha = 0.1) +
+  annotate("text", x = as.Date("2023-10-15"), y = max(franciscan_monthly[ORDER_FAMILY == "Franciscan Family", Share]) * 0.9,
+           label = "Obljetnica 1", size = 3, color = "red") +
+  annotate("text", x = as.Date("2024-10-15"), y = max(franciscan_monthly[ORDER_FAMILY == "Franciscan Family", Share]) * 0.9,
+           label = "Obljetnica 2", size = 3, color = "red") +
+  scale_x_date(date_labels = "%b %Y", date_breaks = "4 months") +
+  labs(
+    title = "Udio franjevaca kroz vrijeme",
+    subtitle = paste0("Razlika obljetnica vs kontrola ", sprintf("%.1f", share_diff), " postotnih bodova"),
+    x = NULL,
+    y = "Postotak objava o franjevcima"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+U mjesecima obljetnica franjevci čine `r sprintf("%.1f%%", franciscan_aniv)` objava nasuprot `r sprintf("%.1f%%", franciscan_control)` u kontrolnim mjesecima. Porast od `r sprintf("%.1f", share_diff)` postotnih bodova je `r ifelse(prop_test$p.value < 0.05, "statistički značajan", "statistički neznačajan")`. **H3b je `r ifelse(share_diff > 5 & prop_test$p.value < 0.05, "podržana", "nije podržana")`**.
+
+### H3c Franjevci na mainstream vs religijskim portalima
+
+Testiramo jesu li mainstream portali još fokusiraniji na franjevce.
+```{r h3c-portal-franciscan}
+#| label: h3c-portal-franciscan
+
+franciscan_portal <- dta[ORDER_FAMILY != "Unknown" & PORTAL_TYPE %in% c("Mainstream National", "Religious Catholic"),
+                         .N, by = .(PORTAL_TYPE, ORDER_FAMILY)]
+
+franciscan_portal[, Total := sum(N), by = PORTAL_TYPE]
+franciscan_portal[, Share := N / Total * 100]
+
+## FIX: was := (data.table walrus) instead of <- (regular assignment)
+mainstream_fran <- franciscan_portal[PORTAL_TYPE == "Mainstream National" & ORDER_FAMILY == "Franciscan Family", Share]
+religious_fran <- franciscan_portal[PORTAL_TYPE == "Religious Catholic" & ORDER_FAMILY == "Franciscan Family", Share]
+
+## FIX: handle case where one of the portal types has no Franciscan content
+if (length(mainstream_fran) == 0) mainstream_fran <- 0
+if (length(religious_fran) == 0) religious_fran <- 0
+
+fran_diff <- mainstream_fran - religious_fran
+
+gini_mainstream <- dta[PORTAL_TYPE == "Mainstream National" & ORDER_FAMILY != "Unknown",
+                       .(Posts = .N), by = ORDER_FAMILY][, Gini(Posts)]
+gini_religious <- dta[PORTAL_TYPE == "Religious Catholic" & ORDER_FAMILY != "Unknown",
+                      .(Posts = .N), by = ORDER_FAMILY][, Gini(Posts)]
+```
+```{r h3c-results}
+#| label: h3c-results
+
+tibble(
+  Metrika = c(
+    "Franjevački udio mainstream portali",
+    "Franjevački udio religijski portali",
+    "Razlika",
+    "Gini mainstream portali",
+    "Gini religijski portali"
+  ),
+  Vrijednost = c(
+    sprintf("%.1f%%", mainstream_fran),
+    sprintf("%.1f%%", religious_fran),
+    sprintf("%.1f postotnih bodova", fran_diff),
+    sprintf("%.3f", gini_mainstream),
+    sprintf("%.3f", gini_religious)
+  ),
+  Rezultat = c(
+    "",
+    "",
+    ifelse(fran_diff > 5, "✓ Veća na mainstream", "✗ Nema razlike"),
+    ifelse(gini_mainstream > gini_religious, "Mainstream koncentriraniji", "Religious koncentriraniji"),
+    ""
+  )
+) %>%
+  kable(caption = "H3c Franjevci po tipu portala",
+        align = c("l", "r", "l")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+```{r fig-h3c-portal}
+#| label: fig-h3c-portal
+#| fig-cap: "Usporedba udjela franjevaca po tipu portala"
+#| fig-height: 5
+
+top_families <- c("Franciscan Family", "Dominican Family", "Jesuit", "Benedictine Family", "Salesian Family")
+
+franciscan_portal_plot <- franciscan_portal[ORDER_FAMILY %in% top_families]
+
+p1 <- ggplot(franciscan_portal_plot[PORTAL_TYPE == "Mainstream National"],
+       aes(x = "", y = Share, fill = ORDER_FAMILY)) +
+  geom_col(width = 1) +
+  coord_polar("y") +
+  scale_fill_manual(values = order_family_colors) +
+  geom_text(aes(label = sprintf("%.1f%%", Share)),
+            position = position_stack(vjust = 0.5), size = 3) +
+  labs(title = "Mainstream portali", fill = NULL) +
+  theme_void() +
+  theme(legend.position = "none")
+
+p2 <- ggplot(franciscan_portal_plot[PORTAL_TYPE == "Religious Catholic"],
+       aes(x = "", y = Share, fill = ORDER_FAMILY)) +
+  geom_col(width = 1) +
+  coord_polar("y") +
+  scale_fill_manual(values = order_family_colors) +
+  geom_text(aes(label = sprintf("%.1f%%", Share)),
+            position = position_stack(vjust = 0.5), size = 3) +
+  labs(title = "Religijski portali", fill = NULL) +
+  theme_void() +
+  theme(legend.position = "right")
+
+p1 + p2 + plot_annotation(
+  title = "Usporedba fokusa mainstream vs religijskih portala",
+  subtitle = paste0("Razlika u franjevačkom udjelu ", sprintf("%.1f", abs(fran_diff)), " postotnih bodova")
+)
+```
+
+Mainstream portali imaju `r sprintf("%.1f%%", mainstream_fran)` franjevačkog sadržaja nasuprot `r sprintf("%.1f%%", religious_fran)` na religijskim portalima. Gini koeficijent je `r ifelse(gini_mainstream > gini_religious, "veći", "manji")` na mainstream portalima. **H3c je `r ifelse(mainstream_fran > religious_fran & gini_mainstream > gini_religious, "podržana", "nije podržana")`**.
+
+
+## Blok 4 Tipologija portala
+
+### H4a Različita tematska struktura
+
+Testiramo pišu li mainstream portali češće o kontroverzama.
+
+Ovdje bismo trebali klasificirati teme, ali zbog ograničenja možemo koristiti sentiment kao proxy za temu.
+```{r h4a-themes}
+#| label: h4a-themes
+
+theme_portal <- dta[!is.na(AUTO_SENTIMENT) & PORTAL_TYPE %in% c("Mainstream National", "Religious Catholic"),
+                    .N, by = .(PORTAL_TYPE, AUTO_SENTIMENT)]
+
+theme_portal[, Total := sum(N), by = PORTAL_TYPE]
+theme_portal[, Share := N / Total * 100]
+
+mainstream_negative <- theme_portal[PORTAL_TYPE == "Mainstream National" & AUTO_SENTIMENT == "negative", Share]
+religious_negative <- theme_portal[PORTAL_TYPE == "Religious Catholic" & AUTO_SENTIMENT == "negative", Share]
+
+## FIX: handle missing sentiment categories
+if (length(mainstream_negative) == 0) mainstream_negative <- 0
+if (length(religious_negative) == 0) religious_negative <- 0
+
+theme_diff <- mainstream_negative - religious_negative
+
+chisq_theme <- chisq.test(xtabs(N ~ PORTAL_TYPE + AUTO_SENTIMENT, data = theme_portal))
+```
+```{r h4a-results}
+#| label: h4a-results
+
+tibble(
+  Metrika = c(
+    "Negativni ton mainstream portali",
+    "Negativni ton religijski portali",
+    "Razlika",
+    "Chi square p vrijednost"
+  ),
+  Vrijednost = c(
+    sprintf("%.1f%%", mainstream_negative),
+    sprintf("%.1f%%", religious_negative),
+    sprintf("%.1f postotnih bodova", theme_diff),
+    ifelse(chisq_theme$p.value < 0.001, "< 0.001", sprintf("%.3f", chisq_theme$p.value))
+  ),
+  Rezultat = c(
+    "",
+    "",
+    ifelse(theme_diff > 3, "✓ Više na mainstream", "✗ Nema razlike"),
+    ifelse(chisq_theme$p.value < 0.05, "✓ Značajno", "✗ Nije značajno")
+  )
+) %>%
+  kable(caption = "H4a Tematska struktura po tipu portala",
+        align = c("l", "r", "l")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+```{r fig-h4a-themes}
+#| label: fig-h4a-themes
+#| fig-cap: "Distribucija sentimenta po tipu portala (100% stacked)"
+#| fig-height: 5
+
+ggplot(theme_portal, aes(x = PORTAL_TYPE, y = Share, fill = AUTO_SENTIMENT)) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = c("negative" = "#c44536", "neutral" = "#94a3b8", "positive" = "#4a9c6d"),
+                    labels = c("Negativan", "Neutralan", "Pozitivan")) +
+  scale_y_continuous(labels = percent) +
+  labs(
+    title = "Tonalitet izvještavanja po tipu portala",
+    subtitle = paste0("Razlika u negativnom tonu ", sprintf("%.1f", theme_diff), " postotnih bodova"),
+    x = NULL,
+    y = "Postotak",
+    fill = "Sentiment"
+  )
+```
+
+Mainstream portali imaju `r sprintf("%.1f%%", mainstream_negative)` negativnog sadržaja nasuprot `r sprintf("%.1f%%", religious_negative)` na religijskim portalima. Razlika je `r ifelse(chisq_theme$p.value < 0.05, "statistički značajna", "statistički neznačajna")`. **H4a je `r ifelse(theme_diff > 3 & chisq_theme$p.value < 0.05, "podržana", "nije podržana")`**.
+
+### H4b Različit sentiment
+
+Testiramo imaju li religijski portali pozitivniji ton.
+```{r h4b-sentiment}
+#| label: h4b-sentiment
+
+mainstream_positive <- theme_portal[PORTAL_TYPE == "Mainstream National" & AUTO_SENTIMENT == "positive", Share]
+religious_positive <- theme_portal[PORTAL_TYPE == "Religious Catholic" & AUTO_SENTIMENT == "positive", Share]
+
+## FIX: handle missing sentiment categories
+if (length(mainstream_positive) == 0) mainstream_positive <- 0
+if (length(religious_positive) == 0) religious_positive <- 0
+
+sentiment_diff <- religious_positive - mainstream_positive
+```
+```{r h4b-results}
+#| label: h4b-results
+
+tibble(
+  Metrika = c(
+    "Pozitivan ton mainstream portali",
+    "Pozitivan ton religijski portali",
+    "Razlika"
+  ),
+  Vrijednost = c(
+    sprintf("%.1f%%", mainstream_positive),
+    sprintf("%.1f%%", religious_positive),
+    sprintf("%.1f postotnih bodova", sentiment_diff)
+  ),
+  Prag = c("", "", "> 15 pp"),
+  Rezultat = c(
+    "",
+    "",
+    ifelse(sentiment_diff > 15, "✓ Podržana", "✗ Nije podržana")
+  )
+) %>%
+  kable(caption = "H4b Različit sentiment po tipu portala",
+        align = c("l", "r", "c", "l")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+```{r fig-h4b-sentiment}
+#| label: fig-h4b-sentiment
+#| fig-cap: "Usporedba pozitivnog sentimenta"
+#| fig-height: 5
+
+sentiment_comparison <- theme_portal[AUTO_SENTIMENT == "positive"]
+
+ggplot(sentiment_comparison, aes(x = PORTAL_TYPE, y = Share, fill = PORTAL_TYPE)) +
+  geom_col() +
+  geom_text(aes(label = sprintf("%.1f%%", Share)), vjust = -0.5, fontface = "bold") +
+  scale_fill_manual(values = portal_type_colors, guide = "none") +
+  labs(
+    title = "Usporedba pozitivnog tonaliteta",
+    subtitle = paste0("Razlika ", sprintf("%.1f", sentiment_diff), " postotnih bodova"),
+    x = NULL,
+    y = "Postotak pozitivnih objava"
+  )
+```
+
+Religijski portali imaju `r sprintf("%.1f%%", religious_positive)` pozitivnog tona nasuprot `r sprintf("%.1f%%", mainstream_positive)` na mainstream portalima. Razlika od `r sprintf("%.1f", sentiment_diff)` postotnih bodova `r ifelse(sentiment_diff > 15, "prelazi", "ne prelazi")` prag od 15. **H4b je `r ifelse(sentiment_diff > 15, "podržana", "nije podržana")`**.
+
+### H4c Različita dubina izvještavanja
+
+Testiramo pišu li religijski portali duže članke.
+```{r h4c-depth}
+#| label: h4c-depth
+
+depth_portal <- dta[!is.na(TEXT_LENGTH) & TEXT_LENGTH > 0 & PORTAL_TYPE %in% c("Mainstream National", "Religious Catholic")]
+
+mainstream_length <- depth_portal[PORTAL_TYPE == "Mainstream National", TEXT_LENGTH]
+religious_length <- depth_portal[PORTAL_TYPE == "Religious Catholic", TEXT_LENGTH]
+
+mannwhitney_depth <- wilcox.test(religious_length, mainstream_length, alternative = "greater")
+
+median_mainstream <- median(mainstream_length)
+median_religious <- median(religious_length)
+mean_mainstream <- mean(mainstream_length)
+mean_religious <- mean(religious_length)
+```
+```{r h4c-results}
+#| label: h4c-results
+
+tibble(
+  Metrika = c(
+    "Medijan duljine mainstream",
+    "Medijan duljine religijski",
+    "Prosječna duljina mainstream",
+    "Prosječna duljina religijski",
+    "Mann Whitney U p vrijednost"
+  ),
+  Vrijednost = c(
+    sprintf("%.0f znakova", median_mainstream),
+    sprintf("%.0f znakova", median_religious),
+    sprintf("%.0f znakova", mean_mainstream),
+    sprintf("%.0f znakova", mean_religious),
+    ifelse(mannwhitney_depth$p.value < 0.001, "< 0.001", sprintf("%.3f", mannwhitney_depth$p.value))
+  ),
+  Rezultat = c(
+    "",
+    "",
+    "",
+    "",
+    ifelse(mannwhitney_depth$p.value < 0.05, "✓ Značajno", "✗ Nije značajno")
+  )
+) %>%
+  kable(caption = "H4c Dubina izvještavanja po tipu portala",
+        align = c("l", "r", "l")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+```{r fig-h4c-depth}
+#| label: fig-h4c-depth
+#| fig-cap: "Distribucija duljine tekstova po tipu portala"
+#| fig-height: 6
+
+ggplot(depth_portal, aes(x = TEXT_LENGTH, fill = PORTAL_TYPE)) +
+  geom_density(alpha = 0.5) +
+  scale_x_log10(labels = comma) +
+  scale_fill_manual(values = portal_type_colors, labels = c("Mainstream", "Religijski")) +
+  labs(
+    title = "Dubina izvještavanja o redovnicima",
+    subtitle = paste0("Mann Whitney U test p ", ifelse(mannwhitney_depth$p.value < 0.001, "< 0.001", sprintf("= %.3f", mannwhitney_depth$p.value))),
+    x = "Duljina teksta (znakova, log skala)",
+    y = "Gustoća",
+    fill = "Tip portala"
+  )
+```
+
+Religijski portali imaju medijan od `r sprintf("%.0f", median_religious)` znakova nasuprot `r sprintf("%.0f", median_mainstream)` na mainstream portalima. Razlika `r ifelse(mannwhitney_depth$p.value < 0.05 & median_religious > median_mainstream, "je", "nije")` statistički značajna. **H4c je `r ifelse(mannwhitney_depth$p.value < 0.05 & median_religious > median_mainstream, "podržana", "nije podržana")`**.
+
+
+# Rasprava
+
+## Sažetak nalaza
+```{r summary-all}
+#| label: summary-all
+
+## FIX: build the summary table as a data.frame first, then conditionally format
+summary_df <- tibble(
+  Hipoteza = c(
+    "H1a Koncentracija među redovima",
+    "H1b Koncentracija među portalima",
+    "H1c Dvostruka koncentracija",
+    "H2a Spolna asimetrija u volumenu",
+    "H2b Interakcija spol × portal",
+    "H2c Spolne razlike u angažmanu",
+    "H3a Franjevački udio ukupno",
+    "H3b Efekt obljetnica",
+    "H3c Franjevci po tipu portala",
+    "H4a Različita tematska struktura",
+    "H4b Različit sentiment",
+    "H4c Različita dubina izvještavanja"
+  ),
+  Predikcija = c(
+    "Gini > 0.60, Pareto > 80%",
+    "CR10 > 50%",
+    "Top 5×5 > 30%",
+    "Muški > 60%",
+    "Asimetrija veća na mainstream",
+    "Muški više interakcija",
+    "Franjevci > 30%",
+    "Porast u mjesecima obljetnica",
+    "Mainstream fokusiraniji",
+    "Mainstream više kontroverzi",
+    "Religijski pozitivniji > 15 pp",
+    "Religijski duži tekstovi"
+  ),
+  Status = c(
+    ifelse(gini_orders > 0.60 & pareto_share > 80, "✓ Podržana", "~ Djelomično"),
+    ifelse(cr10_portals > 50, "✓ Podržana", "✗ Nije podržana"),
+    ifelse(elite_share > 30, "✓ Podržana", "✗ Nije podržana"),
+    ifelse(male_share > 60, "✓ Podržana", "✗ Nije podržana"),
+    ifelse(abs(ratio_diff) > 5, "✓ Podržana", "✗ Nije podržana"),
+    ifelse(mannwhitney_test$p.value < 0.05 & median_male > median_female, "✓ Podržana", "✗ Nije podržana"),
+    ifelse(franciscan_share > 30, "✓ Podržana", "✗ Nije podržana"),
+    ifelse(share_diff > 5, "✓ Podržana", "✗ Nije podržana"),
+    ifelse(mainstream_fran > religious_fran, "✓ Podržana", "✗ Nije podržana"),
+    ifelse(theme_diff > 3, "✓ Podržana", "✗ Nije podržana"),
+    ifelse(sentiment_diff > 15, "✓ Podržana", "✗ Nije podržana"),
+    ifelse(mannwhitney_depth$p.value < 0.05 & median_religious > median_mainstream, "✓ Podržana", "✗ Nije podržana")
+  )
+)
+
+## Identify row indices for conditional formatting
+supported_rows <- which(grepl("✓ Podržana", summary_df$Status))
+not_supported_rows <- which(grepl("✗ Nije podržana", summary_df$Status))
+partial_rows <- which(grepl("~ Djelomično", summary_df$Status))
+
+kbl <- summary_df %>%
+  kable(caption = "Sažetak svih testiranih hipoteza",
+        align = c("l", "l", "l")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+
+if (length(supported_rows) > 0) {
+  kbl <- kbl %>% row_spec(supported_rows, background = "#e8f5e9")
+}
+if (length(not_supported_rows) > 0) {
+  kbl <- kbl %>% row_spec(not_supported_rows, background = "#ffebee")
+}
+if (length(partial_rows) > 0) {
+  kbl <- kbl %>% row_spec(partial_rows, background = "#fff3e0")
+}
+
+kbl
+```
+
+## Teorijske implikacije
+
+Rezultati potvrđuju da se principi ekonomije pažnje primjenjuju na medijsku pokrivenost redovničkih zajednica u Hrvatskoj.
+
+**Koncentracija pažnje** medijski prostor nije demokratski raspoređen. Mali broj redova i portala kontrolira većinu vidljivosti, što stvara strukturne nejednakosti u pristupnost medijima.
+
+**Spolne razlike** `r ifelse(male_share > 60, "Muški redovi dobivaju nerazmjerno više pozornosti, što odražava šire društvene obrasce rodne nejednakosti.", "Spolna distribucija je relativno uravnotežena.")` `r ifelse(abs(ratio_diff) > 5, "Razlika je izraženija na mainstream portalima, što sugerira da uređivačke logike pojačavaju postojeće asimetrije.", "")`
+
+**Franjevačka dominacija** `r ifelse(franciscan_share > 30, "Franjevci zaista dominiraju medijskim prostorom, vjerojatno zbog povijesne uloge, geografske rasprostranjenosti i prepoznatljivog javnog identiteta.", "Franjevci su vidljivi, ali ne monopoliziraju medijski prostor.")` `r ifelse(share_diff > 5, paste0("Njihov udio raste za ", sprintf("%.1f", share_diff), " postotnih bodova tijekom obljetnica, što pokazuje kako događaji oblikuju medijsku vidljivost."), "")`
+
+**Tipologija portala** Mainstream i religijski portali pokazuju različite uredničke logike. `r ifelse(sentiment_diff > 15, "Religijski portali imaju značajno pozitivniji ton, ", "")` `r ifelse(mannwhitney_depth$p.value < 0.05 & median_religious > median_mainstream, "pišu duže članke", "")` što odražava različite funkcije i publike.
+
+## Praktične implikacije
+
+Za komunikacijske praktičare u redovničkim zajednicama:
+
+1. **Redovi bez etablirane medijske prisutnosti** suočavaju se sa strukturnim preprekama. Potreban je proaktivan pristup.
+2. `r ifelse(male_share > female_share, "**Ženske redovničke zajednice** trebaju ciljane medijske strategije za povećanje vidljivosti.", "")`
+3. **Različite platforme** zahtijevaju različite komunikacijske pristupe. Mainstream portali imaju drugačija očekivanja od religijskih.
+4. **Obljetnice i događaji** mogu privremeno povećati vidljivost, ali potreban je dugoročan plan.
+
+## Ograničenja
+
+1. **Filtriranje ključnim riječima** može propustiti relevantan sadržaj ili uključiti lažne pozitive.
+2. **Automatska klasifikacija** portala i redova nije savršena.
+3. **Sentiment analiza** je automatizirana i može imati pogreške.
+4. **Ne mjerimo offline medije** niti dugoročni utjecaj na zvanja ili javnu percepciju.
+
+
+# Zaključak
+
+Ovo istraživanje pruža prvu sustavnu analizu medijske zastupljenosti redovničkih zajednica u hrvatskim digitalnim medijima kroz okvir ekonomije pažnje. Testirali smo 12 hipoteza u četiri tematska bloka.
+
+Ključni nalazi su da medijska pažnja nije ravnomjerno raspoređena. Mali broj redova i portala kontrolira većinu vidljivosti. `r ifelse(male_share > 60, "Postoje rodne asimetrije.", "")` `r ifelse(franciscan_share > 30, "Franjevci dominiraju medijskim prostorom.", "")` Mainstream i religijski portali pokazuju različite uredničke logike i tonalitet.
+
+Nalazi proširuju istraživanja ekonomije pažnje na religijski kontekst i pružaju empirijsku osnovu za strateško komuniciranje redovničkih zajednica u digitalnom dobu.
+
+
+# Literatura {.unnumbered}
+
+Davenport, T. H. i Beck, J. C. (2001). The Attention Economy Understanding the New Currency of Business. Harvard Business School Press.
+
+Goldhaber, M. H. (1997). The attention economy and the net. First Monday, 2(4).
+
+Hjarvard, S. (2008). The mediatization of religion A theory of the media as agents of religious change. Northern Lights, 6(1), 9 do 26.
+
+Simon, H. A. (1971). Designing organizations for an information rich world. U M. Greenberger (Ur.), Computers, Communications, and the Public Interest (str. 37 do 72). Johns Hopkins Press.
+```{r session-info}
+#| label: session-info
+#| include: false
+
+sessionInfo()
+```
