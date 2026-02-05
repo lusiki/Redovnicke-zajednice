@@ -616,7 +616,7 @@ if (!"month" %in% names(dta_full)) {
   dta_full[, month := month(DATE)]
 }
 
-dta_full <- dta_full[SOURCE_TYPE != "tiktok" & !is.na(SOURCE_TYPE)]
+dta_full <- dta_full[SOURCE_TYPE == "web"]
 dta_full <- dta_full[DATE >= as.Date("2021-01-01") & DATE <= as.Date("2025-12-31")]
 dta_full <- dta_full[year >= 2021 & year <= 2025]
 
@@ -856,7 +856,7 @@ tibble(
     "Ukupno objava o redovnicima",
     "Jedinstvenih izvora",
     "Vremenski raspon",
-    "Platforme",
+    "Platforma",
     "Godine",
     "Objave o muškim redovnicima",
     "Objave o ženskim redovnicama",
@@ -868,7 +868,7 @@ tibble(
     format(n_posts, big.mark = ","),
     format(n_sources, big.mark = ","),
     paste(date_min, "do", date_max),
-    paste(sort(unique(dta$SOURCE_TYPE)), collapse = ", "),
+    "web",
     paste(sort(unique(year(dta$DATE))), collapse = ", "),
     format(sum(dta$GENDER == "Male", na.rm = TRUE), big.mark = ","),
     format(sum(dta$GENDER == "Female", na.rm = TRUE), big.mark = ","),
