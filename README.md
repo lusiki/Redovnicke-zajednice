@@ -8,7 +8,7 @@ This research project analyzes how Croatian digital media portrays members of re
 
 ### Working Paper
 
-**[View the full analysis (HTML version)](https://lusiki.github.io/Redovnicke-zajednice/)**
+**[View the full analysis (HTML version)](https://raw.githack.com/lusiki/Redovnicke-zajednice/main/R/analyis_v2.html)**
 
 ### Research Questions
 
