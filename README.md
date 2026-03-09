@@ -10,6 +10,8 @@ This research project analyzes how Croatian digital media portrays members of re
 
 **[View the full analysis (HTML version)](https://raw.githack.com/lusiki/Redovnicke-zajednice/main/R/analysis_v3.html)**
 
+**[Download the full analysis (Word version)](https://github.com/lusiki/Redovnicke-zajednice/raw/main/R/analysis_v4.docx)**
+
 ### Research Questions
 
 1. Which religious community receives the most media attention?
