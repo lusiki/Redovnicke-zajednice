@@ -35,6 +35,7 @@ format:
     fig-width: 6.5
     fig-height: 4
 execute:
+  echo: false
   warning: false
   message: false
 ---
